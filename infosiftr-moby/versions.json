@@ -12,7 +12,7 @@
     "version": "1.6.18-1~deb11u0"
   },
   "dind": {
-    "version": "1f32e3c95d72a29b3eaacba156ed675dba976cb5"
+    "version": ""
   },
   "engine": {
     "sha256": "7e245ab59bbf99b78250a73ff135ebb2848cd5ea7ceacf0f9b2896c5af72b006",
