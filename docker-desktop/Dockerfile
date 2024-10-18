@@ -11,7 +11,7 @@
 #   This is a huge ugly hack that barely works for the way I play with it.
 #
 
-FROM rust:1.61-slim-bullseye AS virtiofsd
+FROM rust:1.75-slim-bullseye AS virtiofsd
 
 RUN set -eux; \
 	apt-get update; \
@@ -44,8 +44,8 @@ FROM debian:bullseye-slim
 
 # https://docs.docker.com/desktop/release-notes/
 # https://docs.docker.com/desktop/linux/install/
-ENV DOCKER_DESKTOP_URL https://desktop.docker.com/linux/main/amd64/docker-desktop-4.16.2-amd64.deb
-ENV DOCKER_DESKTOP_SHA256 fa3023eb16c24dcbdc5f12021340e874d8399863e96c1a58091c9a41fd50fe58
+ENV DOCKER_DESKTOP_URL https://desktop.docker.com/linux/main/amd64/153195/docker-desktop-4.31.0-amd64.deb
+ENV DOCKER_DESKTOP_SHA256 ae4f0dceddb93a381a150ee085c7b802aab6c6233fc4f4b2809959c99fcc1452
 
 RUN set -eux; \
 	apt-get update; \
@@ -56,7 +56,7 @@ RUN set -eux; \
 	; \
 	savedAptMark="$(apt-mark showmanual)"; \
 	apt-get install -y --no-install-recommends \
-		gnupg dirmngr \
+		gnupg \
 		wget \
 	; \
 	apt-mark auto '.*' > /dev/null; \
@@ -66,6 +66,7 @@ RUN set -eux; \
 	gpg --keyserver keyserver.ubuntu.com --recv-keys 9DC858229FC7DD38854AE2D88D81803C0EBFCD88; \
 	mkdir -p /usr/local/share/keyrings; \
 	gpg --export --armor 9DC858229FC7DD38854AE2D88D81803C0EBFCD88 > /usr/local/share/keyrings/docker-archive.gpg.asc; \
+	gpgconf --kill all; \
 	rm -rf "$GNUPGHOME"; \
 	\
 	. /etc/os-release; \
@@ -92,13 +93,22 @@ ENV PATH /opt/docker-desktop/bin:$PATH
 # virtiofsd defaults to "--sandbox=namespace" (which doesn't work well in a container) and "--sandbox=chroot" or "--sandbox=none" are only allowed for root, so I provide a patched build of virtiofsd (matching the version that ships with Docker Desktop)
 COPY --from=virtiofsd /virtiofsd/target/release/virtiofsd /opt/docker-desktop/bin/virtiofsd.tianon
 RUN set -eux; \
+	virtiofsd="$(command -v virtiofsd)"; \
+	[ "$virtiofsd" = '/opt/docker-desktop/bin/virtiofsd' ]; \
+	\
 	before="$(virtiofsd --version 2>&1)"; \
 	dpkg-divert --add --rename --divert /opt/docker-desktop/bin/virtiofsd.orig /opt/docker-desktop/bin/virtiofsd; \
 	ln -svfT virtiofsd.tianon /opt/docker-desktop/bin/virtiofsd; \
 	after="$(virtiofsd --version 2>&1)"; \
 	[ "$before" = "$after" ]; \
+	\
 # divert (unused?) "virtiofsd-v1.0.0" to make sure it doesn't get used accidentally 😅
-	dpkg-divert --add --rename --divert /opt/docker-desktop/bin/virtiofsd-v1.0.0-unused /opt/docker-desktop/bin/virtiofsd-v1.0.0
+	[ -s /opt/docker-desktop/bin/virtiofsd-v1.0.0 ]; \
+	dpkg-divert --add --rename --divert /opt/docker-desktop/bin/virtiofsd-v1.0.0-unused /opt/docker-desktop/bin/virtiofsd-v1.0.0; \
+	\
+# also divert QEMU's "virtiofsd" to make sure it doesn't get used accidentally either
+	[ -s /usr/lib/qemu/virtiofsd ]; \
+	dpkg-divert --add --rename --divert /usr/lib/qemu/virtiofsd.orig /usr/lib/qemu/virtiofsd
 
 RUN set -eux; \
 # setting up ID maps for virtiofsd namespace: retrieving subordinate UID range: no range for <USER> found in /etc/subuid

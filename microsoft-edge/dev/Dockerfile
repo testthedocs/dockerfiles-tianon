@@ -4,7 +4,7 @@
 # PLEASE DO NOT EDIT IT DIRECTLY.
 #
 
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 RUN set -eux; \
 	apt-get update; \
@@ -15,6 +15,7 @@ RUN set -eux; \
 		libgl1 \
 		libgl1-mesa-dri \
 		libpulse0 \
+# TODO mesa-vulkan-drivers ? ("Warning: vkCreateInstance: Found no drivers!") -- adding didn't seem to change anything except remove the warning (still "Disabled" in "about:gpu") 🤷
 	; \
 	rm -rf /var/lib/apt/lists/*
 
@@ -23,7 +24,7 @@ RUN set -eux; \
 RUN set -eux; \
 	savedAptMark="$(apt-mark showmanual)"; \
 	apt-get update; \
-	apt-get install -y --no-install-recommends gnupg dirmngr; \
+	apt-get install -y --no-install-recommends gnupg; \
 	rm -rf /var/lib/apt/lists/*; \
 	export GNUPGHOME="$(mktemp -d)"; \
 	gpg --batch --keyserver keyserver.ubuntu.com --recv-keys BC528686B50D79E339D3721CEB3E94ADBE1229CF; \
@@ -49,7 +50,7 @@ RUN set -eux; \
 	} | tee /etc/default/microsoft-edge-dev
 
 # https://packages.microsoft.com/repos/edge/pool/main/m/microsoft-edge-dev/
-ENV EDGE_VERSION 111.0.1652.0-1
+ENV EDGE_VERSION 131.0.2889.0-1
 
 RUN set -eux; \
 	apt-get update; \

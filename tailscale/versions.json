@@ -1,3 +1,6 @@
 {
-  "version": "1.36.1"
+  "commit": "24929f6b611127cdc40d45ef40d75c6afc1fcc4c",
+  "ref": "refs/tags/v1.76.1^{}",
+  "tag": "v1.76.1",
+  "version": "1.76.1"
 }

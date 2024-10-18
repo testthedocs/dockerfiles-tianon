@@ -1,3 +1,6 @@
 {
-  "version": "1.6.1"
+  "commit": "77f199ab02ff2e3bca4ca653e922e9fef67dec43",
+  "ref": "refs/tags/1.8.2^{}",
+  "tag": "1.8.2",
+  "version": "1.8.2"
 }

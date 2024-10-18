@@ -1,25 +1,55 @@
 {
-  "cli": {
-    "sha256": "164fbe94364c9bc089f634f37fa414b49c1c67888dcf817c61e0f5e0a82b34bd",
-    "version": "20.10.23-1~deb11u0"
-  },
-  "cli-plugin-buildx": {
-    "sha256": "87bb44ddffb090c55d9b247073701ee9da1f27be8d23ebabb65774e2b0cb88c2",
-    "version": "0.10.3-1~deb11u0"
-  },
-  "containerd": {
-    "sha256": "34f68c5777a694f2a116795e7cafb2f8a44ff40bef45af0d28af3dc471c8420d",
-    "version": "1.6.18-1~deb11u0"
-  },
-  "dind": {
-    "version": "1f32e3c95d72a29b3eaacba156ed675dba976cb5"
+  "debian": {
+    "version": "bookworm"
   },
   "engine": {
-    "sha256": "7e245ab59bbf99b78250a73ff135ebb2848cd5ea7ceacf0f9b2896c5af72b006",
-    "version": "20.10.23-1~deb11u0"
+    "sha256": "18c71d49a98eedd038dc10ecc5ea55bf9e1aa19be177b4aaebbd7d33fd9351f6",
+    "version": "23.0.11-2~deb12u0"
+  },
+  "containerd": {
+    "sha256": "b8b5427f6afab2aa555dc4960415214f597cb0a51bf2ca734e51e7b64afec25c",
+    "version": "1.6.32-2~deb12u0"
   },
   "runc": {
-    "sha256": "7f2f981a5d5ddd227fdfd85e47f58e388e888d5001a42e0061be02095e033c88",
-    "version": "1.1.4-1~deb11u0"
-  }
+    "sha256": "5c00c17469da23e9436f4013a78564693b752655c38d46e2d41932fa3ed1f315",
+    "version": "1.1.12-1~deb12u0"
+  },
+  "cli": {
+    "sha256": "ab6f07dcb6be74a30609784995b5d658773f81c41a0743d0d947dab81ac72f39",
+    "version": "23.0.10-1~deb12u0"
+  },
+  "cli-plugin-buildx": {
+    "sha256": "0755a1890a8de1ca6b78778d49e2aa2771051bb3a353ab4575b78eafa38023bb",
+    "version": "0.14.1-1~deb12u0"
+  },
+  "unstable": {
+    "engine": {
+      "sha256": "618ac8080a7259d5557a409d50d282e5eff3eceefaf020d56639f716f2fd622e",
+      "version": "23.0.11-2"
+    },
+    "containerd": {
+      "sha256": "40ea0b9f8fa82f8d6b1abf341e3752d0145e27536c2192e73bc178e952e8ce6b",
+      "version": "1.6.32-2"
+    },
+    "runc": {
+      "sha256": "8b7088956964f59825e2f856cc58820a754886a17d42bea2be18b54803a18232",
+      "version": "1.1.12-1"
+    },
+    "cli": {
+      "sha256": "77afa3ac0d4442243c913916dd3751d67b4ae9c0f61ffde66c733f38dfb15153",
+      "version": "23.0.10-1"
+    },
+    "cli-plugin-buildx": {
+      "sha256": "1c9106369fc44d8877ed344f7c65727992f878eb1952a100c9d3c3e9f670895d",
+      "version": "0.14.1-1"
+    }
+  },
+  "dind": {
+    "version": "65cfcc28ab37cb75e1560e4b4738719c07c6618e"
+  },
+  "version": "23.0.11",
+  "variants": [
+    "",
+    "unstable"
+  ]
 }

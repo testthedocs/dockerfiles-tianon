@@ -4,7 +4,7 @@
 # PLEASE DO NOT EDIT IT DIRECTLY.
 #
 
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 RUN set -eux; \
 	apt-get update; \
@@ -30,14 +30,14 @@ ENV PATH /opt/firefox:$PATH
 # https://archive.mozilla.org/pub/firefox/releases/
 # https://download-installer.cdn.mozilla.net/pub/firefox/releases/
 # https://www.mozilla.org/en-US/firefox/all/#product-desktop-release
-ENV FIREFOX_VERSION 110.0
+ENV FIREFOX_VERSION 131.0.3
 
 RUN set -eux; \
 	savedAptMark="$(apt-mark showmanual)"; \
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
 		bzip2 \
-		gnupg dirmngr \
+		gnupg \
 		wget \
 	; \
 	\

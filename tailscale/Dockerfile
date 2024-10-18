@@ -4,17 +4,18 @@
 # PLEASE DO NOT EDIT IT DIRECTLY.
 #
 
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 RUN set -eux; \
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
+		iproute2 \
 		iptables \
 	; \
 	rm -rf /var/lib/apt/lists/*
 
 # https://pkgs.tailscale.com/stable/#static
-ENV TAILSCALE_VERSION 1.36.1
+ENV TAILSCALE_VERSION 1.76.1
 
 RUN set -eux; \
 	dpkgArch="$(dpkg --print-architecture)"; \
@@ -70,12 +71,13 @@ RUN set -eux; \
 			mkdir -p /opt/tailscale; \
 			cd /tmp/src; \
 			export GOBIN=/opt/tailscale GOCACHE="$PWD/.gocache" GOPATH="$PWD/.gopath"; \
+# https://github.com/tailscale/tailscale/blob/v1.56.1/build_dist.sh#L32
 # we didn't "git clone" so let's reimplement "build_dist.sh" to the best of our ability
 			version="$(cat VERSION.txt)"; \
 			go install \
 				-ldflags " \
-					-X tailscale.com/version.Long=$version \
-					-X tailscale.com/version.Short=$version \
+					-X tailscale.com/version.longStamp=$version \
+					-X tailscale.com/version.shortStamp=$version \
 				" \
 				./cmd/tailscale \
 				./cmd/tailscaled \

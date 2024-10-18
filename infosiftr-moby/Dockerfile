@@ -4,7 +4,7 @@
 # PLEASE DO NOT EDIT IT DIRECTLY.
 #
 
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 RUN set -eux; \
 	apt-get update; \
@@ -17,35 +17,42 @@ RUN set -eux; \
 	; \
 	rm -rf /var/lib/apt/lists/*
 
-RUN echo 'deb [ allow-insecure=yes trusted=yes ] https://apt.infosiftr.com/moby debian-bullseye stable' > /etc/apt/sources.list.d/moby.list
+# https://apt.tianon.xyz/moby
+# https://apt.tianon.xyz/moby/dists/bookworm/tianon-moby.sources
+RUN echo 'deb [ allow-insecure=yes trusted=yes ] https://apt.tianon.xyz/moby bookworm main' > /etc/apt/sources.list.d/moby.list
+# TODO deb822
 
-# http://apt.infosiftr.com/moby/pool/debian-bullseye/stable/moby-cli/
-ENV MOBY_CLI_VERSION 20.10.23-1~deb11u0
-# http://apt.infosiftr.com/moby/pool/debian-bullseye/stable/moby-engine/
-ENV MOBY_ENGINE_VERSION 20.10.23-1~deb11u0
-# http://apt.infosiftr.com/moby/pool/debian-bullseye/stable/moby-containerd/
-ENV MOBY_CONTAINERD_VERSION 1.6.18-1~deb11u0
-# http://apt.infosiftr.com/moby/pool/debian-bullseye/stable/moby-runc/
-ENV MOBY_RUNC_VERSION 1.1.4-1~deb11u0
+# http://apt.tianon.xyz/moby/pool/bookworm/main/moby-engine/
+ENV MOBY_ENGINE_VERSION 23.0.11-2~deb12u0
+# http://apt.tianon.xyz/moby/pool/bookworm/main/moby-containerd/
+ENV MOBY_CONTAINERD_VERSION 1.6.32-2~deb12u0
+# http://apt.tianon.xyz/moby/pool/bookworm/main/moby-runc/
+ENV MOBY_RUNC_VERSION 1.1.12-1~deb12u0
 
-# http://apt.infosiftr.com/moby/pool/debian-bullseye/stable/moby-buildx/
-ENV MOBY_BUILDX_VERSION 0.10.3-1~deb11u0
+# http://apt.tianon.xyz/moby/pool/bookworm/main/moby-cli/
+ENV MOBY_CLI_VERSION 23.0.10-1~deb12u0
+# http://apt.tianon.xyz/moby/pool/bookworm/main/moby-buildx/
+ENV MOBY_BUILDX_VERSION 0.14.1-1~deb12u0
 
 RUN set -eux; \
 	\
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
-		"moby-cli=$MOBY_CLI_VERSION" \
 		"moby-engine=$MOBY_ENGINE_VERSION" \
 		"moby-containerd=$MOBY_CONTAINERD_VERSION" \
 		"moby-runc=$MOBY_RUNC_VERSION" \
 		\
+		"moby-cli=$MOBY_CLI_VERSION" \
 		"moby-cli-plugin-buildx=$MOBY_BUILDX_VERSION" \
 	; \
 	rm -rf /var/lib/apt/lists/*; \
 	\
 	dockerd --version; \
-	docker --version
+	containerd --version; \
+	runc --version; \
+	\
+	docker --version; \
+	docker buildx version
 
 COPY modprobe.sh /usr/local/bin/modprobe
 COPY docker-entrypoint.sh /usr/local/bin/
@@ -84,7 +91,7 @@ RUN set -eux; \
 	echo 'dockremap:165536:65536' >> /etc/subgid
 
 # https://github.com/docker/docker/tree/master/hack/dind
-ENV DIND_COMMIT 1f32e3c95d72a29b3eaacba156ed675dba976cb5
+ENV DIND_COMMIT 65cfcc28ab37cb75e1560e4b4738719c07c6618e
 RUN set -eux; \
 	wget -O /usr/local/bin/dind "https://raw.githubusercontent.com/docker/docker/${DIND_COMMIT}/hack/dind"; \
 	chmod +x /usr/local/bin/dind
@@ -93,6 +100,10 @@ COPY dockerd-entrypoint.sh /usr/local/bin/
 
 VOLUME /var/lib/docker
 EXPOSE 2375 2376
+
+# https://github.com/docker/buildx/issues/484#issuecomment-749352728
+ENV BUILDKIT_STEP_LOG_MAX_SIZE -1
+ENV BUILDKIT_STEP_LOG_MAX_SPEED -1
 
 ENTRYPOINT ["dockerd-entrypoint.sh"]
 CMD []

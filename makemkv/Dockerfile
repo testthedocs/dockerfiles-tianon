@@ -4,18 +4,19 @@
 # PLEASE DO NOT EDIT IT DIRECTLY.
 #
 
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 # This disc requires Java runtime (JRE), but none was found. Certain functions will fail, please install Java. See http://www.makemkv.com/bdjava/ for details.
 RUN set -eux; \
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
-		openjdk-11-jre-headless \
+		default-jre-headless \
 	; \
 	rm -rf /var/lib/apt/lists/*
 
 # http://www.makemkv.com/forum2/viewtopic.php?f=3&t=224
-ENV MAKEMKV_VERSION 1.17.3
+ENV MAKEMKV_VERSION 1.17.8
+# http://makemkv.com/download/ (release notes)
 
 # beta code: http://www.makemkv.com/forum2/viewtopic.php?f=5&t=1053
 RUN set -ex; \
@@ -27,7 +28,7 @@ RUN set -ex; \
 		ca-certificates \
 		g++ \
 		gcc \
-		gnupg dirmngr \
+		gnupg \
 		libavcodec-dev \
 		libexpat-dev \
 		libssl-dev \
@@ -80,8 +81,11 @@ RUN set -ex; \
 	\
 	apt-mark auto '.*' > /dev/null; \
 	[ -z "$savedAptMark" ] || apt-mark manual $savedAptMark; \
-	find /usr/local -type f -executable -exec ldd '{}' ';' \
-		| awk '/=>/ { print $(NF-1) }' \
+	find /usr/local \
+		-type f \
+		\( -executable -o -name '*.so' \) \
+		-exec ldd '{}' ';' \
+		| awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); printf "*%s\n", so }' \
 		| sort -u \
 		| xargs -r dpkg-query --search \
 		| cut -d: -f1 \
