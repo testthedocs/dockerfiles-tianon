@@ -1,6 +1,8 @@
-FROM alpine:3.17
+FROM alpine:3.20
 
-RUN apk add --no-cache \
+RUN set -eux; \
+	apkArch="$(apk --print-arch)"; \
+	apk add --no-cache \
 		bash \
 		bash-completion \
 		bind-tools \
@@ -13,19 +15,27 @@ RUN apk add --no-cache \
 		ipcalc \
 		iperf \
 		iptables \
+		iptables-legacy \
 		iputils \
+		jq \
 		mtr \
+		nbtscan \
 		net-tools \
+		nftables \
 		nmap \
 		openssh-client \
 		openssl \
 		rsync \
 		socat \
 		ssh-audit \
-		tshark \
 		wget \
-		whois
-# TODO add "nbtscan" when we get to Alpine 3.18 (if it makes it out of testing)
-# https://pkgs.alpinelinux.org/packages?name=nbtscan&branch=edge&arch=x86_64
+		whois \
+		wireguard-tools \
+# tshark isn't available on arm32v6 (Alpine's armhf):
+# https://git.alpinelinux.org/aports/tree/community/wireshark/APKBUILD?h=3.19-stable&id=bb857f3ce0b980f56f6a75f9d9a6fde9f48dfd36#n11
+		$([ "$apkArch" = 'armhf' ] || echo tshark) \
+# "git" is reasonably small on Alpine (adds ~6MiB)
+		git \
+	;
 
 CMD ["bash", "--login", "-i"]

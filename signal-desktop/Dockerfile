@@ -4,13 +4,13 @@
 # PLEASE DO NOT EDIT IT DIRECTLY.
 #
 
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 RUN set -eux; \
 	apt-get update; \
 	apt-get install -y --no-install-recommends ca-certificates; \
 	savedAptMark="$(apt-mark showmanual)"; \
-	apt-get install -y --no-install-recommends gnupg dirmngr; \
+	apt-get install -y --no-install-recommends gnupg; \
 	\
 # https://updates.signal.org/desktop/apt/keys.asc
 	key='DBA3 6B51 81D0 C816 F630  E889 D980 A174 57F6 FB06'; \
@@ -19,6 +19,7 @@ RUN set -eux; \
 	gpg --batch --keyserver keyserver.ubuntu.com --recv-keys "$key"; \
 	mkdir -p /usr/local/share/keyrings; \
 	gpg --batch --export "$key" > /usr/local/share/keyrings/signal-desktop.gpg; \
+	gpgconf --kill all; \
 	rm -rf "$GNUPGHOME"; \
 	\
 	apt-mark auto '.*' > /dev/null; \
@@ -31,7 +32,7 @@ RUN set -eux; \
 	rm -rf /var/lib/apt/lists/*
 
 # https://github.com/signalapp/Signal-Desktop/releases
-ENV SIGNAL_DESKTOP_VERSION 6.6.0
+ENV SIGNAL_DESKTOP_VERSION 7.29.0
 
 RUN set -eux; \
 	apt-get update; \
@@ -45,6 +46,8 @@ RUN set -eux; \
 		libgtk-3-0 \
 		libx11-xcb1 \
 		libxshmfence1 \
+# LaunchProcess: failed to execvp: xdg-settings
+		xdg-utils \
 	; \
 	rm -rf /var/lib/apt/lists/*; \
 	signal="$(command -v signal-desktop)"; \

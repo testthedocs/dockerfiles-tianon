@@ -4,10 +4,10 @@
 # PLEASE DO NOT EDIT IT DIRECTLY.
 #
 
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 # https://github.com/HandBrake/HandBrake/releases
-ENV HANDBRAKE_VERSION 1.6.1
+ENV HANDBRAKE_VERSION 1.8.2
 
 RUN set -eux; \
 	savedAptMark="$(apt-mark showmanual)"; \
@@ -15,7 +15,7 @@ RUN set -eux; \
 	apt-get install -y --no-install-recommends \
 		bzip2 \
 		ca-certificates \
-		gnupg dirmngr \
+		gnupg \
 		wget \
 		\
 		autoconf \
@@ -23,6 +23,7 @@ RUN set -eux; \
 		autopoint \
 		binutils \
 		cmake \
+		desktop-file-utils \
 		g++ \
 		gcc \
 		gettext \
@@ -30,7 +31,7 @@ RUN set -eux; \
 		libbz2-dev \
 		libc6-dev \
 		libdrm-dev \
-		libgtk-3-dev \
+		libgtk-4-dev \
 		libjansson-dev \
 		liblzma-dev \
 		libmp3lame-dev \
@@ -51,6 +52,10 @@ RUN set -eux; \
 		patch \
 		pkg-config \
 		python3 \
+		\
+# https://github.com/HandBrake/HandBrake/issues/6006#issuecomment-2081484348
+		git \
+#		libx265-dev \
 	; \
 	rm -rf /var/lib/apt/lists/*; \
 	\
@@ -61,6 +66,7 @@ RUN set -eux; \
 	GNUPGHOME="$(mktemp -d)"; export GNUPGHOME; \
 	gpg --batch --keyserver keyserver.ubuntu.com --recv-keys '1629 C061 B3DD E7EB 4AE3  4B81 021D B8B4 4E4A 8645'; \
 	gpg --batch --verify handbrake.tar.bz2.sig handbrake.tar.bz2; \
+	gpgconf --kill all; \
 	rm -rf "$GNUPGHOME" handbrake.tar.bz2.sig; \
 	\
 	mkdir -p /tmp/handbrake; \
@@ -76,7 +82,6 @@ RUN set -eux; \
 	./configure \
 # TODO --arch [MODE]         select architecture mode: x86_64
 		--build build \
-		--disable-gtk-update-checks \
 		--enable-fdk-aac \
 		--enable-numa \
 		--enable-nvenc \
@@ -98,7 +103,7 @@ RUN set -eux; \
 		-type f \
 		\( -executable -o -name '*.so' \) \
 		-exec ldd '{}' ';' \
-		| awk '/=>/ { print $(NF-1) }' \
+		| awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); printf "*%s\n", so }' \
 		| sort -u \
 		| xargs -r dpkg-query --search \
 		| cut -d: -f1 \

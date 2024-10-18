@@ -4,7 +4,7 @@
 # PLEASE DO NOT EDIT IT DIRECTLY.
 #
 
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 RUN set -eux; \
 	apt-get update; \
@@ -28,8 +28,10 @@ RUN set -eux; \
 		libqt5qml5 \
 		libqt5quick5 \
 		libqt5quickwidgets5 \
+		libqt5svg5 \
 		libqt5widgets5 \
 		libqt5x11extras5 \
+		libqt5xml5 \
 # TODO test whether this one's still necessary
 		libxkbcommon-x11-0 \
 	; \
@@ -37,7 +39,7 @@ RUN set -eux; \
 
 # https://zoom.us/download#client_4meeting ("Debian", "64 bit", "8.0+", "Version X.Y.ZZZ.ZZZ")
 # https://support.zoom.us/hc/en-us/articles/205759689-Release-notes-for-Linux
-ENV ZOOM_VERSION 5.13.7.683
+ENV ZOOM_VERSION 6.2.3.2056
 # curl -fsS --head 'https://zoom.us/client/latest/zoom_amd64.deb' | grep '^location: '
 
 RUN set -eux; \

@@ -4,13 +4,13 @@
 # PLEASE DO NOT EDIT IT DIRECTLY.
 #
 
-FROM ubuntu:focal
+FROM ubuntu:22.04
 
 RUN set -eux; \
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
 		ca-certificates wget \
-		gnupg dirmngr \
+		gnupg \
 	; \
 	rm -rf /var/lib/apt/lists/*
 
@@ -29,7 +29,7 @@ RUN set -eux; \
 ENV LANG en_US.UTF-8
 
 # https://github.com/lutris/lutris/releases
-ENV LUTRIS_VERSION 0.5.12
+ENV LUTRIS_VERSION 0.5.17
 
 RUN set -eux; \
 # turn "0.5.10-beta1" into "0.5.10_beta1" for the deb filename
