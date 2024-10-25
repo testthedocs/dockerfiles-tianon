@@ -12,23 +12,29 @@ for gsl in */gsl.sh; do
 	img="$BASHBREW_NAMESPACE/$img"
 	newStrategy="$(GENERATE_STACKBREW_LIBRARY="$gsl" GITHUB_REPOSITORY="$img" "$BASHBREW_SCRIPTS/github-actions/generate.sh")"
 	case "$img" in
+		'tianon/infosiftr-moby')
+			# remove per-architecture tags for now (temporary workaround for https://github.com/docker-library/bashbrew/pull/81)
+			newStrategy="$(jq -c 'del(.matrix.include[] | select(.meta.entries[].tags | contains(["tianon/infosiftr-moby:latest"]) | not))' <<<"$newStrategy")"
+			;;
+
 		'tianon/cygwin')
 			# remove tags that Windows on GitHub Actions can't test
 			newStrategy="$(jq -c 'del(.matrix.include[] | select(.os == "invalid-or-unknown"))' <<<"$newStrategy")"
 			;;
 
 		'tianon/true')
-			# make sure our "true" binary is correctly compiled
+			# make sure our "true" binaries are correctly compiled
 			newStrategy="$(jq -c '
 				.matrix.include[].runs.build |= (
-					[
-						"[ -s true/true-asm ]",
-						"rm true/true-asm",
+					(if contains("yolo") then "true-yolo" else "true-asm" end) as $binary
+					| [
+						"[ -s true/\($binary) ]",
+						"rm -v true/\($binary)",
 						"docker build --pull --tag tianon/true:builder --target asm --file true/Dockerfile.all true",
-						"docker run --rm tianon/true:builder tar -cC /true true-asm | tar -xvC true",
+						"docker run --rm tianon/true:builder tar -cC /true \($binary) | tar -xvC true",
 						"git diff --exit-code true",
-						"[ -s true/true-asm ]",
-						"true/true-asm",
+						"[ -s true/\($binary) ]",
+						"true/\($binary)",
 						.
 					] | join("\n")
 				)
@@ -55,7 +61,7 @@ strategy="$(jq -c --argjson danglingDockerfiles "$danglingDockerfiles" '.matrix.
 			os: "ubuntu-latest",
 			runs: {
 				prepare: $first.runs.prepare,
-				build: ("docker build -t " + ($img | @sh) + " " + ($dir | @sh)),
+				build: ("DOCKER_BUILDKIT=0 docker build -t " + ($img | @sh) + " " + ($dir | @sh)),
 				history: ("docker history " + ($img | @sh)),
 				test: ("~/oi/test/run.sh --config ~/oi/test/config.sh --config .test/config.sh " + ($img | @sh)),
 				images: $first.runs.images,

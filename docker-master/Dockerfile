@@ -10,9 +10,9 @@
 #
 #   $ docker run -d --name dind --privileged --volume dind:/var/lib/docker tianon/docker-master
 
-FROM golang:1.19-bullseye AS build
+FROM golang:1.22.0-bookworm AS build
 
-RUN set -ex; \
+RUN set -eux; \
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
 		cmake \
@@ -33,18 +33,19 @@ ENV DOCKER_BUILDTAGS \
 
 WORKDIR /moby
 
-ENV CLI_GITCOMMIT dfb36eaef8729914749500b148649e05ceeddd03
+ARG CLI_GITCOMMIT=61baf2a3d984a1e59fcadb38e28d77b571434b88
+ENV CLI_GITCOMMIT $CLI_GITCOMMIT
 
-RUN set -ex; \
+RUN set -eux; \
 	mkdir cli; \
 	cd cli; \
-	wget -O /tmp/cli.tgz "https://github.com/docker/cli/archive/$CLI_GITCOMMIT.tar.gz"; \
+	wget -O /tmp/cli.tgz "https://github.com/docker/cli/archive/$CLI_GITCOMMIT.tar.gz" --progress=dot:giga; \
 	tar -xvf /tmp/cli.tgz --strip-components=1; \
 	rm /tmp/cli.tgz
 
 RUN set -eux; \
 	cd cli; \
-	{ echo 'module github.com/docker/cli'; echo 'go 1.19'; } > go.mod; \
+	{ echo 'module github.com/docker/cli'; grep -E '^go ' vendor.mod; } | tee go.mod; \
 # "go: inconsistent vendoring in /moby/cli:" -> "X@vY: is marked as explicit in vendor/modules.txt, but not explicitly required in go.mod"
 	rm vendor/modules.txt; \
 # can't use the Makefile anymore thanks to https://github.com/docker/cli/pull/2993 ...
@@ -53,36 +54,33 @@ RUN set -eux; \
 	docker --version; \
 	ldd /usr/local/bin/docker || :
 
-ENV MOBY_GITCOMMIT 4e276400760585c9d5969488c9b44e5176a58c18
+ARG MOBY_GITCOMMIT=032721ff75fe4a71a45b4a7a9b7e7c4c80c6431b
+ENV MOBY_GITCOMMIT $MOBY_GITCOMMIT
 
-RUN set -ex; \
+RUN set -eux; \
 	mkdir engine; \
 	cd engine; \
-	wget -O /tmp/docker.tgz "https://github.com/moby/moby/archive/$MOBY_GITCOMMIT.tar.gz"; \
+	wget -O /tmp/docker.tgz "https://github.com/moby/moby/archive/$MOBY_GITCOMMIT.tar.gz" --progress=dot:giga; \
 	tar -xvf /tmp/docker.tgz --strip-components=1; \
 	rm /tmp/docker.tgz
 
 RUN set -eux; \
 	cd engine; \
 	export TMP_GOPATH=/tmp/gopath; \
+# https://github.com/containerd/containerd/issues/5824
+# https://github.com/containerd/containerd/commit/00eb74a4ca47d5ad9c7d1171a2929a3da39deee6
+	export STATIC=1; \
+# TODO ^^ figure out why this is still necessary (because it actually shouldn't be 😭)
 	for comp in containerd runc tini; do \
 		hack/dockerfile/install/install.sh "$comp"; \
 	done; \
-# https://github.com/containerd/containerd/issues/5824
-	( \
-		set -eu; \
-		cd "$TMP_GOPATH/src/github.com/containerd/containerd"; \
-		sed -ri -e '/buildmode=pie/d' Makefile.linux; \
-		make bin/ctr EXTRA_LDFLAGS='-extldflags "-static"' BUILDTAGS='netgo osusergo static_build'; \
-		cp -avflL bin/ctr /usr/local/bin/; \
-	); \
 	ldd /usr/local/bin/* || :
 
 RUN set -eux; \
 	cd engine; \
-	{ echo 'module github.com/docker/docker'; echo 'go 1.19'; } > go.mod; \
+	{ echo 'module github.com/docker/docker'; grep -E '^go ' vendor.mod; } | tee go.mod; \
 # fix "inconsistent vendoring" issue
-	rm vendor/modules.txt; \
+#	rm vendor/modules.txt; \
 	sed -ri '/^[[:space:]]*copy_binaries /d' hack/make/binary-daemon; \
 	GOFLAGS='-mod=vendor' DOCKER_GITCOMMIT="$MOBY_GITCOMMIT" hack/make.sh binary; \
 	cp -avlL \
@@ -95,7 +93,7 @@ RUN set -eux; \
 	ldd /usr/local/bin/dockerd /usr/local/bin/docker-proxy || :
 
 # copy all our binaries to a simple fixed location (so they can be easily extracted, if desired)
-RUN set -ex; \
+RUN set -eux; \
 	mkdir -p /artifacts; \
 	cp -avlL \
 		/usr/local/bin/containerd* \
@@ -105,7 +103,7 @@ RUN set -ex; \
 		/artifacts/
 
 # verify that every binary can run ~standalone
-RUN set -ex; \
+RUN set -eux; \
 	cd /artifacts; \
 	for bin in *; do \
 		case "$bin" in \
@@ -116,7 +114,30 @@ RUN set -ex; \
 		chroot . "./$bin" --version; \
 	done
 
-FROM alpine:3.17
+FROM golang:1.22.0-bookworm AS buildx
+
+ARG BUILDX_GITCOMMIT=746eadd16e461ac1a961bb22e7fea8f1d05da88f
+ENV BUILDX_GITCOMMIT $BUILDX_GITCOMMIT
+
+RUN set -eux; \
+	mkdir buildx; \
+	cd buildx; \
+	wget -O /tmp/buildx.tgz "https://github.com/docker/buildx/archive/$BUILDX_GITCOMMIT.tar.gz" --progress=dot:giga; \
+	tar -xvf /tmp/buildx.tgz --strip-components=1; \
+	rm /tmp/buildx.tgz
+
+RUN set -eux; \
+	cd buildx; \
+	GOFLAGS='-mod=vendor' CGO_ENABLED=0 VERSION=HEAD REVISION="$BUILDX_GITCOMMIT" DESTDIR=/usr/local/bin ./hack/build; \
+	docker-buildx version; \
+	ldd /usr/local/bin/docker-buildx || :; \
+	mkdir -p /artifacts; \
+	cp -avlL /usr/local/bin/docker-buildx /artifacts/; \
+	chroot /artifacts ./docker-buildx version
+
+# TODO compose?
+
+FROM alpine:3.20
 
 RUN set -eux; \
 	apk add --no-cache \
@@ -141,6 +162,7 @@ ENV DOCKER_TLS_CERTDIR=/certs
 RUN mkdir /certs /certs/client && chmod 1777 /certs /certs/client
 
 COPY --from=build /artifacts/ /moby/engine/hack/dind /usr/local/bin/
+COPY --from=buildx /artifacts/docker-buildx /usr/local/libexec/docker/cli-plugins/
 COPY docker*-entrypoint.sh modprobe.sh /usr/local/bin/
 
 RUN set -eux; \
@@ -151,6 +173,7 @@ RUN set -eux; \
 	docker-init --version; \
 	dockerd --version; \
 	runc --version; \
+	docker buildx version; \
 	for sh in /usr/local/bin/*.sh; do \
 		sh -n "$sh"; \
 	done

@@ -1,0 +1,69 @@
+{
+  "linux": {
+    "moniker": "stable",
+    "version": "6.11.5",
+    "iseol": false,
+    "released": {
+      "timestamp": 1729605108,
+      "isodate": "2024-10-22"
+    },
+    "source": "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.11.5.tar.xz",
+    "pgp": "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.11.5.tar.sign",
+    "patch": {
+      "full": "https://cdn.kernel.org/pub/linux/kernel/v6.x/patch-6.11.5.xz",
+      "incremental": "https://cdn.kernel.org/pub/linux/kernel/v6.x/incr/patch-6.11.4-5.xz"
+    },
+    "changelog": "https://cdn.kernel.org/pub/linux/kernel/v6.x/ChangeLog-6.11.5",
+    "gitweb": "https://git.kernel.org/stable/h/v6.11.5",
+    "diffview": "https://git.kernel.org/stable/ds/v6.11.5/v6.11.4"
+  },
+  "arches": {
+    "amd64": {
+      "nolibc": "x86_64",
+      "dpkg": "amd64",
+      "apk": "x86_64"
+    },
+    "arm32v5": {
+      "nolibc": "arm",
+      "dpkg": "armel"
+    },
+    "arm32v6": {
+      "nolibc": "arm",
+      "apk": "armhf"
+    },
+    "arm32v7": {
+      "nolibc": "arm",
+      "dpkg": "armhf",
+      "apk": "armv7"
+    },
+    "arm64v8": {
+      "nolibc": "arm64",
+      "dpkg": "arm64",
+      "apk": "aarch64"
+    },
+    "i386": {
+      "nolibc": "i386",
+      "dpkg": "i386",
+      "apk": "x86"
+    },
+    "mips64le": {
+      "nolibc": "mips",
+      "dpkg": "mips64el"
+    },
+    "ppc64le": {
+      "nolibc": "powerpc",
+      "dpkg": "ppc64el",
+      "apk": "ppc64le"
+    },
+    "riscv64": {
+      "nolibc": "riscv",
+      "dpkg": "riscv64",
+      "apk": "riscv64"
+    },
+    "s390x": {
+      "nolibc": "s390",
+      "dpkg": "s390x",
+      "apk": "s390x"
+    }
+  }
+}

@@ -1,4 +1,4 @@
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 RUN set -eux; \
 	apt-get update; \
@@ -22,8 +22,10 @@ RUN set -eux; \
 		libqt5qml5 \
 		libqt5quick5 \
 		libqt5quickwidgets5 \
+		libqt5svg5 \
 		libqt5widgets5 \
 		libqt5x11extras5 \
+		libqt5xml5 \
 # TODO test whether this one's still necessary
 		libxkbcommon-x11-0 \
 	; \

@@ -1,0 +1,126 @@
+{{ if env.variant != "" then .[env.variant] else . end | ( -}}
+{{ # https://github.com/tianon/bashbrew/commit/823f2c4716e0c697a10a772e46a5d51c386a5dcc (bashbrew ~support for "--platform=$BUILDPLATFORM" specifically for this use case -- applied to Tianon's own local builds) -}}
+FROM --platform=$BUILDPLATFORM golang:{{ .go.version }} AS build
+
+{{ if env.variant == "dev" then ( -}}
+# https://github.com/moby/buildkit/commits/HEAD
+# https://github.com/moby/buildkit/tree/{{ .version }}
+ARG BUILDKIT_COMMIT={{ .version }}
+ENV BUILDKIT_COMMIT $BUILDKIT_COMMIT
+{{ ) else ( -}}
+# https://github.com/moby/buildkit/releases
+ENV BUILDKIT_VERSION {{ .version }}
+{{ ) end -}}
+
+COPY \
+{{ if env.variant != "dev" and (.version | startswith("0.13.") or startswith("0.14.")) then ( -}}
+	backport-5072-fetch-tags.patch \
+	backport-5096-fix-umask.patch \
+{{) else "" end -}}
+{{ if .version | startswith("0.13.") or startswith("0.14.") or startswith("0.15.") or startswith("0.16.") then ( -}}
+	backport-5372-sbom-args.patch \
+	backport-moby-48455-fix-riscv64-seccomp.patch \
+{{) else "" end -}}
+{{ if .version | startswith("0.13.") or startswith("0.14.") then ( -}}
+	containerd-arm64-v8-pre-0.15.patch \
+{{ ) else ( -}}
+	containerd-arm64-v8.patch \
+{{ ) end -}}
+	git-no-submodules.patch \
+{{ if .version | startswith("0.13.") or startswith("0.14.") or startswith("0.15.") then ( -}}
+	mips64le-pre-0.16.patch \
+{{ ) else ( -}}
+	mips64le.patch \
+{{ ) end -}}
+	noclip.patch \
+{{ # linting was introduced in 0.14+ slash dockerfile/1.8.0 -}}
+{{ if .version | startswith("0.13.") then "" else ( -}}
+	nolint.patch \
+{{ ) end -}}
+	/tmp/buildkit-patches/
+
+WORKDIR /app
+
+RUN set -eux; \
+{{ if env.variant == "dev" then ( -}}
+	git init --quiet; \
+	git config advice.detachedHead false; \
+	git fetch --depth 1 'https://github.com/moby/buildkit.git' "$BUILDKIT_COMMIT:"; \
+	git checkout FETCH_HEAD; \
+{{ ) else ( -}}
+	git clone --branch "v$BUILDKIT_VERSION" --depth 1 --config advice.detachedHead=false 'https://github.com/moby/buildkit.git' .; \
+{{ ) end -}}
+	for patch in /tmp/buildkit-patches/*.patch; do \
+		git apply --verbose "$patch"; \
+	done; \
+	git diff --color
+
+ENV CGO_ENABLED 0
+
+ARG TARGETOS TARGETARCH TARGETVARIANT
+ENV GOOS=$TARGETOS GOARCH=$TARGETARCH VARIANT=$TARGETVARIANT
+
+RUN set -eux; \
+	case "$GOARCH/$VARIANT" in \
+		amd64/*) export GOAMD64="$VARIANT" ;; \
+		arm/*) export GOARM="${VARIANT#v}" ;; \
+		arm64/v8) ;; \
+		*) [ -z "$VARIANT" ] ;; \
+	esac; \
+	go env | grep -E 'OS=|ARCH=|AMD64=|ARM64=|ARM='; \
+	\
+# https://github.com/moby/buildkit/blob/v0.13.2/Dockerfile#L93
+	pkg='github.com/moby/buildkit'; \
+	ldflags=" \
+		-d -w \
+{{ if env.variant == "dev" then ( -}}
+		-X '$pkg/version.Version={{ env.variant }}-tianon' \
+		-X '$pkg/version.Revision=$BUILDKIT_COMMIT+tianon-patches' \
+{{ ) else ( -}}
+		-X '$pkg/version.Version=$BUILDKIT_VERSION-tianon' \
+		-X '$pkg/version.Revision=v$BUILDKIT_VERSION+tianon-patches' \
+{{ ) end -}}
+		-X '$pkg/version.Package=$pkg' \
+	"; \
+	go build -o /buildkitd -trimpath -ldflags "$ldflags" ./cmd/buildkitd; \
+	go build -o /buildctl -trimpath -ldflags "$ldflags" ./cmd/buildctl; \
+	\
+# https://github.com/moby/buildkit/blob/v0.14.0/frontend/dockerfile/cmd/dockerfile-frontend/Dockerfile#L21
+	pkg='github.com/moby/buildkit/frontend/dockerfile/cmd/dockerfile-frontend'; \
+	ldflags=" \
+		-d -w \
+{{ if env.variant == "dev" then ( -}}
+		-X '$pkg/version.Version={{ env.variant }}-tianon' \
+		-X '$pkg/version.Revision=$BUILDKIT_COMMIT+tianon-patches' \
+{{ ) else ( -}}
+		-X '$pkg/version.Version=buildkit-$BUILDKIT_VERSION-tianon' \
+		-X '$pkg/version.Revision=v$BUILDKIT_VERSION+tianon-patches' \
+{{ ) end -}}
+		-X '$pkg/version.Package=$pkg' \
+	"; \
+	go build -o /dockerfile-frontend -trimpath -ldflags "$ldflags" ./frontend/dockerfile/cmd/dockerfile-frontend
+
+FROM --platform=$TARGETPLATFORM infosiftr/moby
+
+RUN set -eux; \
+	apt-get update; \
+	apt-get install -y --no-install-recommends git; \
+	rm -rf /var/lib/apt/lists/*
+
+COPY --from=build --link /buildkitd /buildctl /dockerfile-frontend /usr/local/bin/
+COPY buildkitd-entrypoint.sh /usr/local/bin/
+
+VOLUME /var/lib/buildkit
+
+# https://github.com/docker/buildx/issues/484#issuecomment-749352728
+ENV BUILDKIT_STEP_LOG_MAX_SIZE -1
+ENV BUILDKIT_STEP_LOG_MAX_SPEED -1
+
+# https://github.com/moby/buildkit/blob/v0.14.0/frontend/gateway/gateway.go#L309
+# https://github.com/moby/buildkit/blob/v0.14.0/frontend/dockerfile/cmd/dockerfile-frontend/Dockerfile#L35-L36
+LABEL moby.buildkit.frontend.network.none="true"
+LABEL moby.buildkit.frontend.caps="moby.buildkit.frontend.inputs,moby.buildkit.frontend.subrequests,moby.buildkit.frontend.contexts"
+
+ENTRYPOINT ["buildkitd-entrypoint.sh"]
+CMD []
+{{ ) -}}

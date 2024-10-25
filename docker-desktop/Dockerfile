@@ -11,7 +11,7 @@
 #   This is a huge ugly hack that barely works for the way I play with it.
 #
 
-FROM rust:1.61-slim-bullseye AS virtiofsd
+FROM rust:1.75-slim-bookworm AS virtiofsd
 
 RUN set -eux; \
 	apt-get update; \
@@ -26,7 +26,7 @@ RUN set -eux; \
 WORKDIR /virtiofsd
 
 # see the end of this Dockerfile -- this version needs to match what's shipped with the relevant version of Docker Desktop
-ENV VIRTIOFS_VERSION 1.1.0
+ENV VIRTIOFS_VERSION 1.11.1
 # https://gitlab.com/virtio-fs/virtiofsd/-/tags
 
 RUN set -eux; \
@@ -34,18 +34,23 @@ RUN set -eux; \
 	tar -xvf virtiofsd.tar.gz --strip-components=1; \
 	rm virtiofsd.tar.gz
 
+# it appears that the DD builds apply https://gitlab.com/virtio-fs/virtiofsd/-/merge_requests/237 👀 ("error: unexpected argument '--translate-uid' found")
+COPY virtiofsd-237.patch ./
+RUN patch --strip=1 --input=virtiofsd-237.patch
+
 COPY virtiofsd.patch ./
 RUN patch --strip=1 --input=virtiofsd.patch
 
 RUN cargo build --release
 
 # https://docs.docker.com/desktop/linux/
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 # https://docs.docker.com/desktop/release-notes/
 # https://docs.docker.com/desktop/linux/install/
-ENV DOCKER_DESKTOP_URL https://desktop.docker.com/linux/main/amd64/docker-desktop-4.16.2-amd64.deb
-ENV DOCKER_DESKTOP_SHA256 fa3023eb16c24dcbdc5f12021340e874d8399863e96c1a58091c9a41fd50fe58
+ENV DOCKER_DESKTOP_VERSION 4.35.0
+ENV DOCKER_DESKTOP_URL https://desktop.docker.com/linux/main/amd64/172550/docker-desktop-amd64.deb
+ENV DOCKER_DESKTOP_SHA256 c93573f1d1c1e83b6460e5666b29283a085a529c2fe8b7e13d1a8955eb0be1ce
 
 RUN set -eux; \
 	apt-get update; \
@@ -56,7 +61,7 @@ RUN set -eux; \
 	; \
 	savedAptMark="$(apt-mark showmanual)"; \
 	apt-get install -y --no-install-recommends \
-		gnupg dirmngr \
+		gnupg \
 		wget \
 	; \
 	apt-mark auto '.*' > /dev/null; \
@@ -66,6 +71,7 @@ RUN set -eux; \
 	gpg --keyserver keyserver.ubuntu.com --recv-keys 9DC858229FC7DD38854AE2D88D81803C0EBFCD88; \
 	mkdir -p /usr/local/share/keyrings; \
 	gpg --export --armor 9DC858229FC7DD38854AE2D88D81803C0EBFCD88 > /usr/local/share/keyrings/docker-archive.gpg.asc; \
+	gpgconf --kill all; \
 	rm -rf "$GNUPGHOME"; \
 	\
 	. /etc/os-release; \
@@ -92,13 +98,18 @@ ENV PATH /opt/docker-desktop/bin:$PATH
 # virtiofsd defaults to "--sandbox=namespace" (which doesn't work well in a container) and "--sandbox=chroot" or "--sandbox=none" are only allowed for root, so I provide a patched build of virtiofsd (matching the version that ships with Docker Desktop)
 COPY --from=virtiofsd /virtiofsd/target/release/virtiofsd /opt/docker-desktop/bin/virtiofsd.tianon
 RUN set -eux; \
+	virtiofsd="$(command -v virtiofsd)"; \
+	[ "$virtiofsd" = '/opt/docker-desktop/bin/virtiofsd' ]; \
+	\
 	before="$(virtiofsd --version 2>&1)"; \
 	dpkg-divert --add --rename --divert /opt/docker-desktop/bin/virtiofsd.orig /opt/docker-desktop/bin/virtiofsd; \
 	ln -svfT virtiofsd.tianon /opt/docker-desktop/bin/virtiofsd; \
 	after="$(virtiofsd --version 2>&1)"; \
 	[ "$before" = "$after" ]; \
-# divert (unused?) "virtiofsd-v1.0.0" to make sure it doesn't get used accidentally 😅
-	dpkg-divert --add --rename --divert /opt/docker-desktop/bin/virtiofsd-v1.0.0-unused /opt/docker-desktop/bin/virtiofsd-v1.0.0
+	\
+# divert QEMU's "virtiofsd" to make sure it doesn't get used accidentally
+	[ -s /usr/lib/qemu/virtiofsd ]; \
+	dpkg-divert --add --rename --divert /usr/lib/qemu/virtiofsd.orig /usr/lib/qemu/virtiofsd
 
 RUN set -eux; \
 # setting up ID maps for virtiofsd namespace: retrieving subordinate UID range: no range for <USER> found in /etc/subuid

@@ -1,4 +1,4 @@
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 RUN set -eux; \
 # dangit, wireshark-common!  *shakes fist*
@@ -10,18 +10,20 @@ RUN set -eux; \
 		curl \
 		dnsutils \
 		fio \
-		gnupg dirmngr \
+		gnupg \
 		iftop \
 		inetutils-ping \
 		ipcalc \
 		iperf \
 		iproute2 \
 		iptables \
+		jq \
 		libfcgi-bin \
 		mtr-tiny \
 		nbtscan \
 		net-tools \
 		netcat-openbsd \
+		nftables \
 		nmap \
 		ntpdate \
 		openssh-client \
@@ -34,6 +36,8 @@ RUN set -eux; \
 		tshark \
 		wget \
 		whois \
+		wireguard-tools \
+# git is large on Debian (~20MiB), so isn't included
 	; \
 	rm -rf /var/lib/apt/lists/*
 
