@@ -10,7 +10,7 @@ RUN apk add --no-cache gnupg librsync
 
 # https://pypi.org/project/duplicity/
 # https://duplicity.gitlab.io/
-ENV DUPLICITY_VERSION 3.0.3.2
+ENV DUPLICITY_VERSION 3.0.4.0
 # https://gitlab.com/duplicity/duplicity
 
 RUN set -eux; \
